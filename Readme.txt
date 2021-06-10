@@ -1,1 +1,0 @@
-Thin film simulation - readme
