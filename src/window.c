@@ -50,12 +50,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void add_fluid(GLFWwindow* window){
 	double xpos, ypos;
 	glfwGetCursorPos(window, &xpos, &ypos);
-	int i = N_DISCR-floor(N_DISCR*xpos/800);
-	int j = floor(N_DISCR*ypos/800);
+	int i = 512-floor(512*xpos/800);
+	int j = floor(512*ypos/800);
 	for(int k=-20; k<20; k++){
 		for(int p=-20; p<20 ; p++){
 			if((k*k)+(p*p)<400){
-				u[N_DISCR*(j+p)+(i+k)] = u[N_DISCR*(j+p)+(i+k)] + 0.002f;
+				u[512*(j+p)+(i+k)] = u[512*(j+p)+(i+k)] + 0.002f;
 			}
 		}
 	}

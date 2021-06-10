@@ -3,210 +3,143 @@
 
 #include "kernel.h"
 
-__global__ void flux_x(float *u, int rho)
-{
+__global__ void flux_block(float *u, float* data_3D_gpu, float* data_edge_gpu, float* flx_x, float* flx_y, int nx){
+	//position in the grid
+	int pos_x = (blockIdx.x * blockDim.x + threadIdx.x)-2;
+	int pos_y = (blockIdx.y * blockDim.y + threadIdx.y)-2;
 
-	int k = blockIdx.x * blockDim.x + threadIdx.x;
-  int rho_ij;
-	int nx = N_DISCR;
-	int ny = N_DISCR;
-	int di = 1;
-	int dj = 0;
+	int pos_data3D_x = (blockIdx.x * blockDim.x + threadIdx.x)-1;
+	int pos_data3D_y = (blockIdx.y * blockDim.y + threadIdx.y)-1;
 
 
-	int i = (int) k % nx;
-	int j = (int) k / nx;
 
-	rho_ij = ((dj+1)*i + (di+1)*j + rho) % 4;
+	int pos_x_data = (blockIdx.x * blockDim.x + threadIdx.x);
+	int pos_y_data = (blockIdx.y * blockDim.y + threadIdx.y);
 
-	if (rho_ij == 3){
+	int pos_block_i = threadIdx.x  + 2;
+	int pos_block_j = threadIdx.y  + 2;
 
-		int i_p, j_p;
-		float W_q, W_p, M, theta, f, delta_u, lap_p, lap_q;
-		float H_E, k_E;
-		float H_p, H_q;
-		float u_p, u_q;
-	  float h = 1.0f/nx;
+	int pos_data3D_i = threadIdx.x+1;
+	int pos_data3D_j = threadIdx.y+1;
 
-		float tau = DELTA_T ;
-		float e = EPSILON;
-		float eta = ETA;
-		float G = ZETA;
+	int pos_block_x = threadIdx.x;
+	int pos_block_y = threadIdx.y;
 
+	int size_u_line = (blockDim.x+3);
+	int size_data_line = blockDim.x+1;
+	int size_edge_line = blockDim.x;
 
-		if (i==0){
-			i_p = nx - 1;
-			j_p = j - dj;
-		} else{
-			i_p = i - di;
-			j_p = j - dj;
+	//access memory
+	__shared__ float u_local[1225]; //4*dimX+3) * (4*dimY+3
+	__shared__ float data_3D_local[3267]; // 3*(4*dimX+1)*(dimY*4+1)
+	__shared__ float data_edge_local[2178]; // 2*(4*dimX+1)*(dimY*4+1)
+	//u local
+	if(threadIdx.x == 0){
+		if(threadIdx.y == 0){
+			u_local[size_u_line+1] = u[((pos_y+1+nx)%nx)*nx + ((pos_x+1+nx)%nx)];
+		} else if(threadIdx.y == blockDim.y-1){
+			u_local[size_u_line*(blockDim.x+2)+1] = u[((pos_y+3+nx)%nx)*nx + ((pos_x+1+nx)%nx)];
 		}
-
-		if(i==0 || i==1 || i==nx-1 || j==0 || j==1 || j==ny-1){
-			lap_q = (u[nx*((j+nx)%nx) + ((i+1+nx)%nx)] + u[nx*((j+1+nx)%nx) + ((i+nx)%nx)] + u[nx*((j-1+nx)%nx) + ((i+nx)%nx)]);
-			lap_p = (u[nx*((j_p+nx)%nx) + (i_p-1+nx)%nx] + u[nx*((j_p+1+nx)%nx) + (i_p+nx)%nx] + u[nx*((j_p-1+nx)%nx) + (i_p+nx)%nx]);
-		} else {
-			lap_q = (u[nx*j + (i+1)] + u[nx*(j+1) + i] + u[nx*(j-1) + i]);
-			lap_p = (u[nx*j_p + (i_p-1)] + u[nx*(j_p+1) + i_p] + u[nx*(j_p-1) + i_p]);
+		for(int i=0; i<2; i++){
+			u_local[size_u_line*(pos_block_y+2) + (i+pos_block_x)] = u[((pos_y+2+nx)%nx)*nx + ((pos_x+i+nx)%nx)];
 		}
-
-		u_p = u[nx*j_p + i_p];
-		u_q = u[nx*j + i];
-
-		if((j-2)%102 == 0 || (j-1)%102 == 0 || (j)%102 == 0){
-			H_q = 0.03f;
-			H_E = 0.03f;
-			k_E = 0.06f;
-
-		} else if((i-2)%102 == 0 || (i-1)%102 == 0 || (i)%102 == 0){
-			if((i+j-3)%204 > 102 || (i+j-2)%204 > 102 || (i+j-1)%204 > 102){
-				H_q = 0.03f;
-				H_E = 0.0f;
-				k_E = 0.0f;
-			} else {
-				H_q = 0.0f;
-				H_E = 0.0f;
-				k_E = 0.0f;
-			}
-		} else{
-			H_q = 0.0f;
-			H_E = 0.0f;
-			k_E = 0.0f;
+	}
+	if (threadIdx.x == blockDim.x-1){
+			u_local[size_u_line*(pos_block_y+2) + (3+pos_block_x)] = u[((pos_y+2+nx)%nx)*nx + ((pos_x+3+nx)%nx)];
+	}
+	if(threadIdx.y == 0){
+		if(threadIdx.x == blockDim.x-1){
+			u_local[2*size_u_line-1] = u[((pos_y+1+nx)%nx)*nx + ((pos_x+3+nx)%nx)];
 		}
-
-		if((j_p-2)%102 == 0 || (j_p-1)%102 == 0 || (j_p)%102 ==  0){
-			H_p = 0.03f;
-		} else if((i_p-2)%102 == 0 || (i_p-1)%102 == 0 || (i_p)%102 == 0){
-			if((i_p+j_p-3)%204 > 102 || (i_p+j_p-2)%204 > 102 || (i_p+j_p-1)%204 > 102){
-				H_q = 0.03f;
-			} else {
-				H_q = 0.0f;
-			}
-		} else {
-			H_p = 0.0f;
+		for(int j=0; j<2; j++){
+				u_local[size_u_line*(pos_block_y+j) + (2+pos_block_x)] = u[((pos_y+j+nx)%nx)*nx + ((pos_x+2+nx)%nx)];
 		}
-
-		W_q = G*(ny-j-0.5f)*h - H_q;
-		W_p = G*(ny-j_p-0.5f)*h - H_p;
-
-		M = 2.0f * u_p*u_p * u_q*u_q /(3.0f*(u_q + u_p)) + (e/6.0f)*u_q*u_q*u_p*u_p*(H_E+k_E);
-
-		theta = h*h + (tau*M*(10.0f*e + 2.0f*eta));
-		f = -(M*h/(theta)) * ((5.0f*e + eta)*(u_q - u_p) - e*(lap_q - lap_p) + W_q-W_p);
-
-		float val = tau*f/h;
-		if(u_p<val){
-			if(u_p > -u_q){
-				delta_u = u_p;
-			} else {
-				delta_u = -u_q;
-			}
-		} else{
-			if(val > -u_q){
-				delta_u = val;
-			} else {
-				delta_u = -u_q;
-			}
-		}
-
-		u[nx*j + i] = u_q + delta_u;
-		u[nx*j_p + i_p] = u_p - delta_u;
 
 	}
-}
+	if (threadIdx.y == blockDim.y-1){
+			u_local[size_u_line*(pos_block_y+3) + (2+pos_block_x)] = u[((pos_y+3+nx)%nx)*nx + ((pos_x+2+nx)%nx)];
+	}
 
-__global__ void flux_y(float *u, int rho)
-{
-	int k = blockIdx.x * blockDim.x + threadIdx.x;
-  int rho_ij;
-	int nx = N_DISCR;
-	int ny = N_DISCR;
-	int di = 0;
-	int dj = 1;
+	u_local[size_u_line*(pos_block_y+2) + (pos_block_x+2)] = u[(pos_y+2)*nx + (pos_x+2)];
+
+	//data_3D
+	if(threadIdx.x == 0){
+			data_3D_local[(size_data_line*(pos_block_y+1) + (pos_block_x))*3] = data_3D_gpu[(((pos_data3D_y+1+nx)%nx)*nx + ((pos_data3D_x+nx)%nx))*3];
+			data_3D_local[(size_data_line*(pos_block_y+1) + (pos_block_x))*3 + 1] = data_3D_gpu[(((pos_data3D_y+1+nx)%nx)*nx + ((pos_data3D_x+nx)%nx))*3 + 1];
+			data_3D_local[(size_data_line*(pos_block_y+1) + (pos_block_x))*3 + 2] = data_3D_gpu[(((pos_data3D_y+1+nx)%nx)*nx + ((pos_data3D_x+nx)%nx))*3 + 2];
+	}
+	if(threadIdx.y == 0){
+			data_3D_local[(size_data_line*(pos_block_y) + (pos_block_x + 1))*3] = data_3D_gpu[(((pos_data3D_y+nx)%nx)*nx + ((pos_data3D_x + 1 + nx)%nx))*3];
+			data_3D_local[(size_data_line*(pos_block_y) + (pos_block_x + 1))*3 + 1] = data_3D_gpu[(((pos_data3D_y+nx)%nx)*nx + ((pos_data3D_x + 1 +nx)%nx))*3 + 1];
+			data_3D_local[(size_data_line*(pos_block_y) + (pos_block_x + 1))*3 + 2] = data_3D_gpu[(((pos_data3D_y+nx)%nx)*nx + ((pos_data3D_x + 1 +nx)%nx))*3 + 2];
+	}
+
+	data_3D_local[(size_data_line*(pos_block_y+1) + (1+pos_block_x))*3] = data_3D_gpu[((pos_data3D_y+1)*nx + (pos_data3D_x+1))*3];
+	data_3D_local[(size_data_line*(pos_block_y+1) + (1+pos_block_x))*3 + 1] = data_3D_gpu[((pos_data3D_y+1)*nx + (pos_data3D_x+1))*3 + 1];
+	data_3D_local[(size_data_line*(pos_block_y+1) + (1+pos_block_x))*3 + 2] = data_3D_gpu[((pos_data3D_y+1)*nx + (pos_data3D_x+1))*3 + 2];
+
+	//data_edge
+	data_edge_local[(size_edge_line*(pos_block_y) + (pos_block_x))*2] = data_edge_gpu[((pos_y_data)*nx + (pos_x_data))*2];
+	data_edge_local[(size_edge_line*(pos_block_y) + (pos_block_x))*2 + 1] = data_edge_gpu[((pos_y_data)*nx + (pos_x_data))*2 + 1];
 
 
-	int i = (int) k % nx;
-	int j = (int) k / nx;
+	__syncthreads();
 
+	float W_q, W_p, M, theta, f, delta_u, lap_p, lap_q;
+	float H_p, H_q, T_p, T_q, ct_p, ct_q;
+	float k_E, H_E;
+	int i_p, j_p;
 
-	rho_ij = ((dj+1)*i + (di+1)*j + rho) % 4;
-	if (rho_ij == 3){
+	float u_p, u_q;
+	float h = 1.0f/nx;
 
-		float W_q, W_p, M, theta, f, delta_u, lap_p, lap_q;
-		float H_p, H_q, H_E, k_E;
-		int i_p, j_p;
+	float tau = DELTA_T ;
+	float e = EPSILON;
+	float eta = ETA;
+	float G = ZETA;
 
-		float u_p, u_q;
-	  float h = 1.0f/nx;
-
-		float tau = DELTA_T ;
-		float e = EPSILON;
-		float eta = ETA;
-		float G = ZETA;
-
-		if (j==0){
-			i_p = i - di;
-			j_p = ny - 1;
+	for(int direction=0; direction<2; direction++){
+		if(direction==0){ //horizontal
+			i_p = -1;
+			j_p = 0;
+		} else { //vertical
+			i_p = 0;
+			j_p = -1;
+		}
+		if(direction == 0){
+			lap_q = (u_local[size_u_line*(pos_block_j) + (pos_block_i+1)] + u_local[size_u_line*(pos_block_j+1) + (pos_block_i)] + u_local[size_u_line*(pos_block_j-1) + (pos_block_i)]);
+			lap_p = (u_local[size_u_line*(pos_block_j+j_p) + (i_p+pos_block_i-1)] + u_local[size_u_line*(pos_block_j+j_p+1) + (i_p+pos_block_i)] + u_local[size_u_line*(pos_block_j+j_p-1) + (i_p+pos_block_i)]);
 		} else {
-			i_p = i - di;
-			j_p = j - dj;
+			lap_q = (u_local[size_u_line*(pos_block_j) + (pos_block_i+1)] + u_local[size_u_line*(pos_block_j+1) + (pos_block_i)] + u_local[size_u_line*(pos_block_j) + (pos_block_i-1)]);
+			lap_p = (u_local[size_u_line*(pos_block_j+j_p) + (i_p+pos_block_i-1)] + u_local[size_u_line*(pos_block_j+j_p) + (i_p+pos_block_i+1)] + u_local[size_u_line*(pos_block_j+j_p-1) + (i_p+pos_block_i)]);
 		}
 
-		if(i==0 || i==1 || i==nx-1 || j==0 || j==1 || j==ny-1){
-			lap_q = (u[nx*((j+nx)%nx) + (i+1+nx)%nx] + u[nx*((j+1+nx)%nx) + (i+nx)%nx] + u[nx*((j+nx)%nx) + (i-1+nx)%nx]);
-			lap_p = (u[nx*((j_p+nx)%nx) + (i_p-1+nx)%nx] + u[nx*((j_p+nx)%nx) + (i_p+1+nx)%nx] + u[nx*((j_p-1+nx)%nx) + (i_p+nx)%nx]);
-		} else {
-			lap_q = (u[nx*j + (i+1)] + u[nx*(j+1) + i] + u[nx*(j) + i-1]);
-			lap_p = (u[nx*j_p + (i_p-1)] + u[nx*(j_p) + i_p+1] + u[nx*(j_p-1) + i_p]);
-		}
+		u_p = u_local[size_u_line*(pos_block_j+j_p) + (i_p+pos_block_i)];
+		u_q = u_local[size_u_line*(pos_block_j) + (pos_block_i)];
 
-		u_p = u[nx*j_p + i_p];
-		u_q = u[nx*j + i];
+		H_p = data_3D_local[(size_data_line*(pos_data3D_j+j_p) + (i_p+pos_data3D_i))*3];
+		H_q = data_3D_local[(size_data_line*(pos_data3D_j) + (pos_data3D_i))*3];
 
-		if((j-2)%102 == 0 || (j-1)%102 == 0 || (j)%102 == 0){
-			H_q = 0.03f;
-			H_E = 0.0f;
-			k_E = 0.0f;
-		} else if((i-2)%102 == 0 || (i-1)%102 == 0 || (i)%102 == 0){
-			if((i+j-3)%204 > 102 || (i+j-2)%204 > 102 || (i+j-1)%204 > 102){
-				H_q = 0.03f;
-				H_E = 0.06f;
-				k_E = 0.06f;
-			} else {
-				H_q = 0.0f;
-				H_E = 0.0f;
-				k_E = 0.0f;
-			}
-		} else{
-			H_q = 0.0f;
-			H_E = 0.0f;
-			k_E = 0.0f;
-		}
+		T_p = data_3D_local[(size_data_line*(pos_data3D_j+j_p) + (i_p+pos_data3D_i))*3 + 1];
+		T_q = data_3D_local[(size_data_line*(pos_data3D_j) + (pos_data3D_i))*3 + 1];
 
-		if((j_p-2)%102 == 0 || (j_p-1)%102 == 0 || (j_p)%102 ==  0){
-			H_p = 0.03f;
-		} else if((i_p-2)%102 == 0 || (i_p-1)%102 == 0 || (i_p)%102 == 0){
-			if((i_p+j_p-3)%204 > 102 || (i_p+j_p-2)%204 > 102 || (i_p+j_p-1)%204 > 102){
-				H_q = 0.03f;
-			} else {
-				H_q = 0.0f;
-			}
-		} else {
-			H_p = 0.0f;
-		}
+		ct_p = data_3D_local[(size_data_line*(pos_data3D_j+j_p) + (i_p+pos_data3D_i))*3 + 2];
+		ct_q = data_3D_local[(size_data_line*(pos_data3D_j) + (pos_data3D_i))*3 + 2];
 
-		W_q = G*(ny-j-0.5f)*h - H_q;
+		k_E = data_edge_local[(size_edge_line*(pos_block_y) + (pos_block_x))*2];
+		H_E = data_edge_local[(size_edge_line*(pos_block_y) + (pos_block_x))*2 + 1];
 
-		if(j==0){
-			W_p = G*(ny-(-1.0f)-0.5f)*h - H_p;
-		}else{
-			W_p = G*(ny-j_p-0.5f)*h - H_p;
-		}
+		W_q = G*(nx-(pos_y_data)-0.5f)*h - H_q;
+		W_p = G*(nx-(pos_y_data+j_p)-0.5f)*h - H_p;
 
-		M = 2.0f * u_p*u_p * u_q*u_q /(3.0f*(u_q + u_p)) + (e/6.0f)*u_q*u_q*u_p*u_p*(H_E+k_E);
 
-		theta = h*h + (tau*M*(10.0f*e + 2.0f*eta));
-		f = -(M*h/(theta)) * ((5.0f*e + eta)*(u_q - u_p) - e*(lap_q - lap_p) + W_q-W_p);
+
+
+		M = 2.0f * u_q*u_q * u_p*u_p /(3.0f*(u_q + u_p)) + (e/6.0f)*u_q*u_q*u_p*u_p*(H_E+k_E);
+
+		theta = h*h + (tau*M*(10.0f*e + 2.0f*eta + G*e*(ct_p + ct_q) - e*(T_p + T_q)));
+		f = (M*h/(theta)) * (eta*(u_p - u_q) + (e)*(lap_q - lap_p + 5.0f*(u_p-u_q)) + W_p-W_q + e*((G*ct_q - T_q)*u_q - (G*ct_p - T_p)*u_p));
+
 
 		float val = tau*f/h;
 		if(u_p<val){
@@ -218,12 +151,35 @@ __global__ void flux_y(float *u, int rho)
 		} else{
 			if(val > -u_q){
 				delta_u = val;
+
 			} else {
 				delta_u = -u_q;
 			}
 		}
 
-		u[nx*j + i] = u_q + delta_u;
-		u[nx*j_p + i_p] = u_p - delta_u;
-  }
+		if(direction==0){
+				flx_x[(pos_y_data)*nx + (pos_x_data)] = delta_u;
+		} else {
+				flx_y[(pos_y_data)*nx + (pos_x_data)] = delta_u;
+		}
+	}
+
+}
+
+__global__ void update_u(float *u, float* flux_x, float* flux_y, int nx){
+	int k = blockIdx.x * blockDim.x + threadIdx.x;
+	int i = k%nx;
+	int j = k/nx;
+
+	if(i == nx-1){
+		if(j == nx-1){
+			u[k] = u[k] + flux_x[k] + flux_y[k] - flux_x[nx*j] - flux_y[i];
+		} else {
+			u[k] = u[k] + flux_x[k] + flux_y[k] - flux_x[nx*j] - flux_y[nx*(j+1)+i];
+		}
+	} else if(j == nx-1){
+		u[k] = u[k] + flux_x[k] + flux_y[k] - flux_x[nx*j+i+1] - flux_y[i];
+	} else {
+		u[k] = u[k] + flux_x[k] + flux_y[k] - flux_x[nx*j+i+1] - flux_y[nx*(j+1)+i];
+	}
 }
