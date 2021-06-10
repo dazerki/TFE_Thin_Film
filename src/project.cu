@@ -1,4 +1,3 @@
-
 extern "C" {
   #include "window.h"
   #include "shaders.h"
@@ -44,15 +43,15 @@ int main(int argc, char *argv[]){
 
   size_t memSize = size*sizeof(float);
 
-	cudaMalloc( (void**)&u_gpu, memSize );
+	gpuErrchk(cudaMalloc( (void**)&u_gpu, memSize ));
 
 	//init
 	initialization(u, nx, ny, h, 3);
 
 	cudaMemcpy( u_gpu, u, memSize, cudaMemcpyHostToDevice );
 
-  int Nblocks = (nx*nx + 255)/256;
-  int Nthreads = 256;
+  int Nblocks = (nx*nx)/512;
+  int Nthreads = 512;
 
   // Initialise window
   GLFWwindow *window = init_window();
@@ -90,18 +89,18 @@ int main(int argc, char *argv[]){
   GLuint ebo;
   glGenBuffers(1, &ebo);
 
-	GLuint *elements = (GLuint*) malloc(4*(nx-1)*(nx-1)*sizeof(GLuint));
-  for (int i = 0; i < nx-1; i++) {
-      for (int j = 0; j < nx-1; j++) {
-          int ind  = i*nx+j;
-          int ind_ = i*(nx-1)+j;
+  GLuint *elements = (GLuint*) malloc(4*(nx-1)*(nx-1)*sizeof(GLuint));
+    for (int i = 0; i < nx-1; i++) {
+        for (int j = 0; j < nx-1; j++) {
+            int ind  = i*nx+j;
+            int ind_ = i*(nx-1)+j;
 
-          elements[4*ind_  ] = ind;
-          elements[4*ind_+1] = ind+1;
-          elements[4*ind_+2] = ind+nx;
-          elements[4*ind_+3] = ind+nx+1;
-      }
-  }
+            elements[4*ind_  ] = ind;
+            elements[4*ind_+1] = ind+1;
+            elements[4*ind_+2] = ind+nx;
+            elements[4*ind_+3] = ind+nx+1;
+        }
+    }
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4*(nx-1)*(nx-1)*sizeof(GLuint), elements, GL_STATIC_DRAW);
@@ -126,10 +125,13 @@ int main(int argc, char *argv[]){
   glEnableVertexAttribArray(colAttrib);
   glVertexAttribPointer(colAttrib, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
+	// PARAMETER
 	int n_passe = 10;
+
 	//LOOP IN TIME
   while(!glfwWindowShouldClose(window)) {
-  	for(int p=0; p<n_passe; p++){
+
+    for(int p=0; p<n_passe; p++){
   		for(int rho=0; rho<4; rho++){
   			flux_x<<<Nblocks, Nthreads>>>(u_gpu, rho);
   		}
@@ -145,7 +147,6 @@ int main(int argc, char *argv[]){
         cudaMemcpy( u_gpu, u, memSize, cudaMemcpyHostToDevice );
   		}
   	}
-
   	cudaMemcpy( u, u_gpu, size*sizeof(float), cudaMemcpyDeviceToHost );
 
     glfwSwapBuffers(window);
