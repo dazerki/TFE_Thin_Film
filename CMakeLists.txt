@@ -41,6 +41,7 @@ option(EPSILON "epsilon to use." OFF)
 option(ZETA "Bond number to use." OFF)
 option(DELTA_T "Temporal Discretisation to use." OFF)
 option(ETA "Stabilisation factor to use." OFF)
+option(N_DISCR "Grid discretisation to use." OFF)
 
 # Epsilon
 if (NOT EPSILON)
@@ -69,6 +70,13 @@ if (NOT ETA)
 endif (NOT ETA)
 message(STATUS "Using stab coeff = ${ETA} .")
 add_definitions(-DETA=${ETA})
+
+# N_DISCR
+if (NOT N_DISCR)
+    set(N_DISCR 512)
+endif (NOT N_DISCR)
+message(STATUS "Using N_DISCR = ${N_DISCR} .")
+add_definitions(-DN_DISCR=${N_DISCR})
 
 
 
