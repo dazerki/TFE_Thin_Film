@@ -23,15 +23,12 @@ include_directories(${GLFW3_INCLUDE_DIR})
 # OpenGL
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
-# Deps
-include_directories(${PROJECT_SOURCE_DIR}/deps)
 
 # Compile options
 option(EPSILON "epsilon to use." OFF)
 option(ZETA "Bond number to use." OFF)
 option(DELTA_T "Temporal Discretisation to use." OFF)
 option(ETA "Stabilisation factor to use." OFF)
-option(N_DISCR "Grid discretisation to use." OFF)
 
 # Epsilon
 if (NOT EPSILON)
@@ -61,14 +58,6 @@ endif (NOT ETA)
 message(STATUS "Using stab coeff = ${ETA} .")
 add_definitions(-DETA=${ETA})
 
-# N_DISCR
-if (NOT N_DISCR)
-    set(N_DISCR 512)
-endif (NOT N_DISCR)
-message(STATUS "Using N_DISCR = ${N_DISCR} .")
-add_definitions(-DN_DISCR=${N_DISCR})
-
-
 # Project files
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/inc)
 file(GLOB C_SRCS
@@ -77,4 +66,4 @@ file(GLOB C_SRCS
 )
 # Use G++ for compiling/linking the source files
 add_executable(${EXEC_NAME} ${C_SRCS})
-target_link_libraries(${EXEC_NAME} ${OPENMP_C_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW3_LIBRARY} ${OPENGL_LIBRARY} pthread m)
+target_link_libraries(${EXEC_NAME} ${PYTHON_LIBRARIES} ${OPENMP_C_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW3_LIBRARY} ${OPENGL_LIBRARY} pthread m)
