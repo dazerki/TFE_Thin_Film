@@ -14,22 +14,16 @@
 #include <time.h>
 
 
-
-float* u;
-GLboolean drag=0;
-
-
 int parity(int di, int dj, int i, int j, int rho);
-void add_fluid(GLFWwindow* window);
 
 int main(int argc, char *argv[]){
 
-	int nx = 512;
-	int ny = 512;
+	int nx = N_DISCR;
+	int ny = N_DISCR;
 	float h = 1.0f/nx ;
 
 	// memory allocation
-	u = (float*)calloc(nx*ny, sizeof(float));
+	float* u = (float*)calloc(nx*ny, sizeof(float));
 
 	//init
 	initialization(u, nx, ny, h, 3);
@@ -260,8 +254,8 @@ int main(int argc, char *argv[]){
 			}
 		}
 		glfwPollEvents();
-		if(drag){
-			add_fluid(window);
+		if(getdrag()){
+			add_fluid(window, u);
 		}
 	}
 
@@ -301,48 +295,4 @@ int main(int argc, char *argv[]){
 
 int parity(int di, int dj, int i, int j, int rho){
 	return ((dj+1)*i + (di+1)*j + rho) % 4;
-}
-
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-
-		if(button == GLFW_MOUSE_BUTTON_LEFT) {
-			drag = (action == GLFW_PRESS);
-		}
-
-}
-
-GLFWwindow *init_window() {
-    // Init GLFW & window
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Viscous film", NULL, NULL);
-    glfwMakeContextCurrent(window);
-
-    // Callbacks
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Init GLEW
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    return window;
-}
-
-void add_fluid(GLFWwindow* window){
-	double xpos, ypos;
-	glfwGetCursorPos(window, &xpos, &ypos);
-	int i = 512-floor(512*xpos/800);
-	int j = floor(512*ypos/800);
-	for(int k=-20; k<20; k++){
-		for(int p=-20; p<20 ; p++){
-			if((k*k)+(p*p)<400){
-				u[512*(j+p)+(i+k)] = u[512*(j+p)+(i+k)] + 0.002f;
-			}
-		}
-	}
 }
