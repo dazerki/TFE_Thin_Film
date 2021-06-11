@@ -3,6 +3,7 @@ Simulation de films fins en temps réel.
 Ce projet simule l'équation du film fin en temps réel suivante:
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=\partial_t&space;u&space;&plus;&space;\nabla&space;\cdot&space;\hat{f}&space;=&space;0" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\partial_t&space;u&space;&plus;&space;\nabla&space;\cdot&space;\hat{f}&space;=&space;0" title="\partial_t u + \nabla \cdot \hat{f} = 0" /></a>
+
 <a href="https://www.codecogs.com/eqnedit.php?latex=\hat{f}&space;=&space;M(u)&space;\nabla&space;\left(-\zeta&space;z&space;-&space;\epsilon&space;\Delta&space;u&space;&plus;&space;\eta&space;u&space;\right)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\hat{f}&space;=&space;M(u)&space;\nabla&space;\left(-\zeta&space;z&space;-&space;\epsilon&space;\Delta&space;u&space;&plus;&space;\eta&space;u&space;\right)" title="\hat{f} = M(u) \nabla \left(-\zeta z - \epsilon \Delta u + \eta u \right)" /></a>
 
 
