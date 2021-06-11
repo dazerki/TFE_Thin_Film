@@ -137,7 +137,9 @@ void merging_gaussian(float* u, int nx, int ny, float h){
 		}
 	}
 	printf("Max = %f \n", max);
+
 }
+
 
 float x_deriv(float h_r, float h_l, float dx){
   return (h_r-h_l)/(2.0f*dx);
@@ -159,7 +161,7 @@ float xy_deriv(float h_ur, float h_dr, float h_ul, float h_dl, float dx, float d
   return (h_ur - h_dr - h_ul + h_dl)/(4.0f*dx*dy);
 }
 
-void init_surface_height_map(float* data_3D, float* height, int nx, int ny, float dx){
+void init_surface_height_map(float* H, float* T, float* ctheta, float* height, int nx, int ny, float dx){
   float h_ul, h_u, h_ur, h_l, h, h_r, h_dl, h_d, h_dr;
   float h_x, h_xx, h_y, h_yy, h_xy;
   float K;
@@ -181,41 +183,40 @@ void init_surface_height_map(float* data_3D, float* height, int nx, int ny, floa
       h_yy = yy_deriv(h_u, h_d, h, dx);
       h_xy = xy_deriv(h_ur, h_dr, h_ul, h_dl, dx, dx);
 
-      data_3D[(nx*j + i)*3] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f)); //H
+      H[nx*j + i] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f));
       K = (h_xx*h_yy - h_xy*h_xy) / (pow(1.0f+h_x*h_x+h_y*h_y, 2.0f));
-      data_3D[(nx*j + i)*3 + 1] = data_3D[(nx*j + i)*3]*data_3D[(nx*j + i)*3] - 2.0f*K ; //T
-      data_3D[(nx*j + i)*3 + 2] = -h_y/(pow(1+h_x*h_x+h_y*h_y, 0.5f)); //ctheta
+      T[nx*j + i] = H[nx*j + i]*H[nx*j + i] - 2.0f*K ;
+      ctheta[nx*j + i] = -h_y/(pow(1+h_x*h_x+h_y*h_y, 0.5f));
     }
   }
 
   for(int i=0; i<nx; i++){ //cas j=0
-    data_3D[i*3 ] = data_3D[(nx + i)*3 ];
-    data_3D[i*3 + 1] = data_3D[(nx + i)*3 + 1];
-    data_3D[i*3 + 2] = data_3D[(nx + i)*3 + 2];
+    H[i] = H[nx+i];
+    T[i] = T[nx+i];
+    ctheta[i] = ctheta[nx+i];
   }
 
   for(int i=0; i<nx; i++){ //cas j=ny-1
-    data_3D[(nx*(ny-1) + i)*3] = data_3D[(i)*3];
-    data_3D[(nx*(ny-1) + i)*3 + 1] = data_3D[(i)*3 + 1];
-    data_3D[(nx*(ny-1) + i)*3 + 2] = data_3D[(i)*3 + 2];
-
+    H[nx*(ny-1) + i] = H[i];
+    T[nx*(ny-1) + i] = T[i];
+    ctheta[nx*(ny-1) + i] = ctheta[i];
   }
 
   for(int j=0; j<ny; j++){ //cas i=0
-    data_3D[(nx*j)*3] = data_3D[(nx*j+1)*3];
-    data_3D[(nx*j)*3 + 1] = data_3D[(nx*j+1)*3 + 1];
-    data_3D[(nx*j)*3 + 2] = data_3D[(nx*j+1)*3 + 2];
+    H[nx*j] = H[nx*j+1];
+    T[nx*j] = T[nx*j+1];
+    ctheta[nx*j] = ctheta[nx*j+1];
   }
 
   for(int j=0; j<ny; j++){ //cas i=nx-1
-    data_3D[(nx*j + nx-1)*3] = data_3D[(nx*j)*3];
-    data_3D[(nx*j + nx-1)*3 + 1] = data_3D[(nx*j)*3 + 1];
-    data_3D[(nx*j + nx-1)*3 + 2] = data_3D[(nx*j)*3 + 2];
+    H[nx*j+ nx-1] = H[nx*j];
+    T[nx*j + nx-1] = T[nx*j];
+    ctheta[nx*j + nx-1] = ctheta[nx*j];
   }
 
 }
 
-void init_height_map_edge(float* data_edge_x, float* data_edge_y, float* height_x_edge, float* height_y_edge, int nx, int ny, float dx){
+void init_height_map_edge(float* H_edge_x, float* H_edge_y, float* k_x, float* k_y, float* height_x_edge, float* height_y_edge, int nx, int ny, float dx){
   float h_ul, h_u, h_ur, h_l, h, h_r, h_dl, h_d, h_dr;
   float h_x, h_xx, h_y, h_yy, h_xy;
 
@@ -238,8 +239,8 @@ void init_height_map_edge(float* data_edge_x, float* data_edge_y, float* height_
       h_yy = yy_deriv(h_u, h_d, h, dx);
       h_xy = xy_deriv(h_ur, h_dr, h_ul, h_dl, dx, dx);
 
-      data_edge_x[((nx+1)*j + i)*2 +1] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f));
-      data_edge_x[((nx+1)*j + i)*2] = (h_xx)/(pow((1.0f + h_x*h_x + h_y*h_y),0.5f));
+      H_edge_x[(nx+1)*j + i] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f));
+      k_x[(nx+1)*j + i] = (h_xx)/(pow((1.0f + h_x*h_x + h_y*h_y),0.5f));
     }
   }
   //y edge
@@ -261,44 +262,44 @@ void init_height_map_edge(float* data_edge_x, float* data_edge_y, float* height_
       h_yy = yy_deriv(h_u, h_d, h, dx);
       h_xy = xy_deriv(h_ur, h_dr, h_ul, h_dl, dx, dx);
 
-      data_edge_y[((nx)*j + i)*2+1] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f));
-      data_edge_y[((nx)*j + i)*2] = (h_yy)/(pow((1.0f + h_x*h_x + h_y*h_y),0.5f));
+      H_edge_y[(nx)*j + i] = (h_xx*(1.0f+h_y*h_y) + h_yy*(1.0f+h_x*h_x) - 2.0f*h_xy*h_x*h_y) / (2.0f * pow((1.0f+h_x*h_x+h_y*h_y), 1.5f));
+      k_y[(nx)*j + i] = (h_yy)/(pow((1.0f + h_x*h_x + h_y*h_y),0.5f));
     }
   }
   for(int i=0; i<nx; i++){ //cas j=0 pour y
-    data_edge_y[i*2 +1] = data_edge_y[((nx)+i)*2 +1];
-    data_edge_y[i*2] = data_edge_y[((nx)+i)*2];
+    H_edge_y[i] = H_edge_y[(nx)+i];
+    k_y[i] = k_y[(nx)+i];
   }
   for(int i=0; i<nx+1; i++){ //cas j=0 pour x
-    data_edge_x[i*2 +1] = data_edge_x[((nx+1)+i)*2 +1];
-    data_edge_x[i*2] = data_edge_x[((nx+1)+i)*2];
+    H_edge_x[i] = H_edge_x[(nx+1)+i];
+    k_x[i] = k_x[(nx+1)+i];
   }
 
   for(int i=0; i<nx; i++){ //cas j=ny pour y
-    data_edge_y[(nx*(ny) + i)*2 +1] = data_edge_y[i*2 +1];
-    data_edge_y[(nx*(ny) + i)*2 ] = data_edge_y[i*2];
+    H_edge_y[nx*(ny) + i] = H_edge_y[i];
+    k_y[nx*(ny) + i] = k_y[i];
   }
   for(int i=0; i<nx+1; i++){ //cas j=ny-1 pour x
-    data_edge_x[((nx+1)*(ny-1) + i)*2 +1] = data_edge_x[i*2 +1];
-    data_edge_x[((nx+1)*(ny-1) + i)*2] = data_edge_x[i*2];
+    H_edge_x[(nx+1)*(ny-1) + i] = H_edge_x[i];
+    k_x[(nx+1)*(ny-1) + i] = k_x[i];
   }
 
   for(int j=0; j<ny+1; j++){ //cas i=0 pour y
-    data_edge_y[(nx*j)*2 +1] = data_edge_y[(nx*j+1)*2 +1];
-    data_edge_y[(nx*j)*2 ] = data_edge_y[(nx*j+1)*2];
+    H_edge_y[nx*j] = H_edge_y[nx*j+1];
+    k_y[nx*j] = k_y[nx*j+1];
   }
   for(int j=0; j<ny; j++){ //cas i=0 pour x
-    data_edge_x[((nx+1)*j)*2 +1] = data_edge_x[((nx+1)*j+1)*2 +1];
-    data_edge_x[((nx+1)*j)*2] = data_edge_x[((nx+1)*j+1)*2];
+    H_edge_x[(nx+1)*j] = H_edge_x[(nx+1)*j+1];
+    k_x[(nx+1)*j] = k_x[(nx+1)*j+1];
   }
 
   for(int j=0; j<ny+1; j++){ //cas i=nx-1 pour y
-    data_edge_y[(nx*j+ nx-1)*2 +1] = data_edge_y[(nx*j)*2 +1];
-    data_edge_y[(nx*j+ nx-1)*2] = data_edge_y[(nx*j)*2];
+    H_edge_y[nx*j+ nx-1] = H_edge_y[nx*j];
+    k_y[nx*j+ nx-1] = k_y[nx*j];
   }
   for(int j=0; j<ny; j++){ //cas i=nx pour x
-    data_edge_x[((nx+1)*j+ nx)*2 +1] = data_edge_x[((nx+1)*j)*2 +1];
-    data_edge_x[((nx+1)*j+ nx)*2] = data_edge_x[((nx+1)*j)*2];
+    H_edge_x[(nx+1)*j+ nx] = H_edge_x[(nx+1)*j];
+    k_x[(nx+1)*j+ nx] = k_x[(nx+1)*j];
   }
 }
 

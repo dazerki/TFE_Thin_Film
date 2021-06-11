@@ -15,7 +15,7 @@ void big_line(float* u, int nx, int ny, float value);
 
 void merging_gaussian(float* u, int nx, int ny, float h);
 
-void init_surface_height_map(float* data_3D, float* height, int nx, int ny, float dx);
+void init_surface_height_map(float* H, float* T, float* ctheta, float* height, int nx, int ny, float dx);
 
 float x_deriv(float h_r, float h_l, float dx);
 
@@ -29,8 +29,6 @@ float xy_deriv(float h_ur, float h_dr, float h_ul, float h_dl, float dx, float d
 
 void read_txt(float* height,float* height_x_edge, float* height_y_edge, char *fileName, int nx);
 
-void init_height_map_edge(float* data_edge_x, float* data_edge_y, float* height_x_edge, float* height_y_edge, int nx, int ny, float dx);
-
-void perturbation(float* u, int nx, int ny, float k, float value, float h);
+void init_height_map_edge(float* H_edge_x, float* H_edge_y, float* k_x, float* k_y, float* height_x_edge, float* height_y_edge, int nx, int ny, float dx);
 
 #endif
