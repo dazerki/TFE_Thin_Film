@@ -22,7 +22,7 @@ cmake ..
 make
 ./project
 ```
-Normalement, une fenêtre devrait s'ouvrir et résoudre l'équation du film en temps réel. Il est alors possible d'intéragir avec la simulation en réalisant un clic gauche. L'utilisateur peut également choisir les paramètres de la simulation grâce à des "flags" à rajouter à la commande "cmake":
+Normalement, une fenêtre devrait s'ouvrir et résoudre l'équation du film en temps réel. Il est alors possible d'interagir avec la simulation en réalisant un clic gauche. L'utilisateur peut également choisir les paramètres de la simulation grâce à des "flags" à rajouter à la commande "cmake":
   * `-DN_DISCR = 512` : Discrétisation de la grille NxN, ce paramètre est uniquement disponible pour les simulations 2D et  Gauss_Seidel_Simplifie
   * `-DZETA = 5.0f` : Nombre de Bond de la simulation, ce nombre devrait se situer entre 13 et 2 en général. Pour assurer l'efficacité de la simulation, il faut indiquer le nombre sous format float en simple précision: 5.0f
   * `-DEPSILON = 0.01f` : Facteur géométrique hauteur du film/ longueur d'onde.
@@ -31,11 +31,11 @@ Normalement, une fenêtre devrait s'ouvrir et résoudre l'équation du film en t
 
 ## Instructions d'installation
 
-Les instructions suivantes correspondent au manager de packet `apt` sur Linux, cependant cela ne devrait pas trop différer d'autres techniques.
+Les instructions suivantes correspondent au manager de packet `apt` sur Linux, cependant cela ne devrait pas trop différer d'autres méthodes.
 
 ### Visualisation (OpenGL & GLFW3)
 
-La visualisation est réalisée grâce à OpenGL & GLFW3. Il est donc nécessaire d'avoir OpenGL, GLFW3 et GLEW d'installé sur votre système:
+La visualisation est réalisée grâce à OpenGL & GLFW3. Il est donc nécessaire d'avoir OpenGL, GLFW3 et GLEW installés sur votre système:
 ```bash
 sudo apt-get install freeglut3-dev libglfw3-dev  libglew-dev
 ```
