@@ -46,7 +46,7 @@ Pour exécuter les codes des branches `GPU_*`, vous aurez besoin d'un processeur
 
 ### OpenMP
 
-Pour exécuter les codes des branches `CPU_*`, vous aurez besoin de OpenMP. Son installation peut être réalisée via:
+Pour exécuter les codes des branches `CPU_*`, vous aurez besoin de OpenMP. Son installation consiste en:
 
 ```bash
 sudo apt-get install libomp-dev
